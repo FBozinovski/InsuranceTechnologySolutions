@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace Claims.Migrations
+namespace Claims.Domain.Migrations
 {
     /// <inheritdoc />
     public partial class MakeAuditFieldsNullable : Migration
