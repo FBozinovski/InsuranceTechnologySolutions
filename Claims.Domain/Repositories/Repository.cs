@@ -41,5 +41,16 @@ namespace Claims.Domain.Repositories
             _dbSet.Remove(entity);
             await _context.SaveChangesAsync();
         }
+        
+        public async Task DeleteByIdAsync(object id)
+        {
+            var entity = await GetByIdAsync(id);
+
+            if (entity is not null)
+            {
+                await DeleteAsync(entity);
+                await _context.SaveChangesAsync();
+            }
+        }
     }
 }
