@@ -1,5 +1,6 @@
 using Claims.Auditing;
 using Claims.Controllers;
+using Claims.Domain.Contexts;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 using System.Runtime.InteropServices;

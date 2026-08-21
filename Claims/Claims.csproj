@@ -23,4 +23,8 @@
     <PackageReference Include="Testcontainers.MsSql" Version="4.6.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Claims.Domain\Claims.Domain.csproj" />
+  </ItemGroup>
+
 </Project>
