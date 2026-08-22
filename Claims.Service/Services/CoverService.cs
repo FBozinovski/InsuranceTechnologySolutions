@@ -1,7 +1,10 @@
-﻿using Claims.Domain.Contexts;
+﻿using AutoMapper;
+using Claims.Domain.Contexts;
 using Claims.Domain.Interfaces;
 using Claims.Domain.Models;
 using Claims.Dto.Enumerations;
+using Claims.Dto.Requests;
+using Claims.Dto.Responses;
 using Claims.Service.Interfaces;
 
 namespace Claims.Service.Services
@@ -11,16 +14,18 @@ namespace Claims.Service.Services
 
         private readonly ICoverRepository _coverRepository;
         private readonly ICoverAuditRepository _coverAuditRepository;
+        private readonly IMapper _mapper;
 
-        public CoverService(ICoverRepository coverRepository, ICoverAuditRepository coverAuditRepository)
+        public CoverService(ICoverRepository coverRepository, ICoverAuditRepository coverAuditRepository, IMapper mapper)
         {
             _coverRepository = coverRepository;
             _coverAuditRepository = coverAuditRepository;
+            _mapper = mapper;
         }
 
-        public async Task<IEnumerable<Cover>> GetAllAsync()
+        public async Task<IEnumerable<CoverResponse>> GetAllAsync()
         {
-            return await _coverRepository.GetAllAsync();
+            return await _coverRepository.GetAllCoverResponses();
         }
 
         public decimal ComputePremium(DateTime startDate, DateTime endDate, Enumerations.CoverType coverType)
@@ -69,19 +74,20 @@ namespace Claims.Service.Services
             await _coverAuditRepository.AddAsync(coverAudit);
         }
 
-        public async Task<Cover> CreateAsync(Cover cover, string httpRequestType)
+        public async Task<CoverResponse> CreateAsync(CoverRequest request, string httpRequestType)
         {
+            var cover = _mapper.Map<Cover>(request);
             cover.Id = Guid.NewGuid().ToString();
             cover.Premium = ComputePremium(cover.StartDate, cover.EndDate, cover.Type);
             await _coverRepository.AddAsync(cover);
             await AuditCover(cover.Id, httpRequestType);
 
-            return cover;
+            return _mapper.Map<CoverResponse>(cover);
         }
 
-        public async Task<Cover> GetByIdAsync(string id)
+        public async Task<CoverResponse> GetByIdAsync(string id)
         {
-            return await _coverRepository.GetByIdAsync(id);
+            return await _coverRepository.GetCoverResponseById(id);
         }
 
         public async Task DeleteByIdAsync(string id, string httpRequestType)

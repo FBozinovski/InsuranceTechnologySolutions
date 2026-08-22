@@ -47,9 +47,11 @@ builder.Services.AddScoped(typeof(IRepository<,>), typeof(Repository<,>));
 builder.Services.AddScoped<IClaimRepository, ClaimRepository>();
 builder.Services.AddScoped<IClaimAuditRepository, ClaimAuditRepository>();
 builder.Services.AddScoped<ICoverRepository, CoverRepository>();
+builder.Services.AddScoped<ICoverAuditRepository, CoverAuditRepository>();
 
 //Service DI
 builder.Services.AddScoped<IClaimService, ClaimService>();
+builder.Services.AddScoped<ICoverService, CoverService>();
 
 //AutoMapper
 builder.Services.AddAutoMapper(cfg => { }, typeof(AssemblyMarker).Assembly);
