@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Claims.Dto.Enumerations;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace Claims.Domain.Models
@@ -18,17 +19,9 @@ namespace Claims.Domain.Models
         public string Name { get; set; }
 
         [BsonElement("claimType")]
-        public ClaimType Type { get; set; }
+        public Enumerations.ClaimType Type { get; set; }
 
         [BsonElement("damageCost")]
         public decimal DamageCost { get; set; }
-    }
-
-    public enum ClaimType
-    {
-        Collision = 0,
-        Grounding = 1,
-        BadWeather = 2,
-        Fire = 3
     }
 }

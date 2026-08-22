@@ -11,5 +11,13 @@ namespace Claims.Dto.Enumerations
             BulkCarrier = 3,
             Tanker = 4
         }
+        
+        public enum ClaimType
+        {
+            Collision = 0,
+            Grounding = 1,
+            BadWeather = 2,
+            Fire = 3
+        }
     }
 }

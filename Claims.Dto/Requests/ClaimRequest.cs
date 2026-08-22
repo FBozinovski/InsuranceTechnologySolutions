@@ -11,7 +11,7 @@ namespace Claims.Dto.Requests
 
         public string Name { get; set; }
 
-        public CoverType Type { get; set; }
+        public ClaimType Type { get; set; }
 
         public decimal DamageCost { get; set; }
     }

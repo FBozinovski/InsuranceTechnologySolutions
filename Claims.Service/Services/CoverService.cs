@@ -1,7 +1,7 @@
 ﻿using Claims.Domain.Contexts;
 using Claims.Domain.Interfaces;
 using Claims.Domain.Models;
-using Claims.Domain.Repositories;
+using Claims.Dto.Enumerations;
 using Claims.Service.Interfaces;
 
 namespace Claims.Service.Services
@@ -23,20 +23,20 @@ namespace Claims.Service.Services
             return await _coverRepository.GetAllAsync();
         }
 
-        public decimal ComputePremium(DateTime startDate, DateTime endDate, CoverType coverType)
+        public decimal ComputePremium(DateTime startDate, DateTime endDate, Enumerations.CoverType coverType)
         {
             var multiplier = 1.3m;
-            if (coverType == CoverType.Yacht)
+            if (coverType == Enumerations.CoverType.Yacht)
             {
                 multiplier = 1.1m;
             }
 
-            if (coverType == CoverType.PassengerShip)
+            if (coverType == Enumerations.CoverType.PassengerShip)
             {
                 multiplier = 1.2m;
             }
 
-            if (coverType == CoverType.Tanker)
+            if (coverType == Enumerations.CoverType.Tanker)
             {
                 multiplier = 1.5m;
             }
@@ -48,9 +48,9 @@ namespace Claims.Service.Services
             for (var i = 0; i < insuranceLength; i++)
             {
                 if (i < 30) totalPremium += premiumPerDay;
-                if (i < 180 && coverType == CoverType.Yacht) totalPremium += premiumPerDay - premiumPerDay * 0.05m;
+                if (i < 180 && coverType == Enumerations.CoverType.Yacht) totalPremium += premiumPerDay - premiumPerDay * 0.05m;
                 else if (i < 180) totalPremium += premiumPerDay - premiumPerDay * 0.02m;
-                if (i < 365 && coverType != CoverType.Yacht) totalPremium += premiumPerDay - premiumPerDay * 0.03m;
+                if (i < 365 && coverType != Enumerations.CoverType.Yacht) totalPremium += premiumPerDay - premiumPerDay * 0.03m;
                 else if (i < 365) totalPremium += premiumPerDay - premiumPerDay * 0.08m;
             }
 

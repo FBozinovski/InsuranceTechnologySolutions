@@ -4,6 +4,7 @@ using Claims.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 using System.Text.Json.Serialization;
+using Claims.MapperProfile;
 using Claims.Service.Interfaces;
 using Claims.Service.Services;
 using Testcontainers.MongoDb;
@@ -51,7 +52,7 @@ builder.Services.AddScoped<ICoverRepository, CoverRepository>();
 builder.Services.AddScoped<IClaimService, ClaimService>();
 
 //AutoMapper
-builder.Services.AddAutoMapper(cfg => { }, AppDomain.CurrentDomain.GetAssemblies());
+builder.Services.AddAutoMapper(cfg => { }, typeof(AssemblyMarker).Assembly);
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

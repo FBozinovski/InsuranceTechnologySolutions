@@ -5,8 +5,8 @@ namespace Claims.Domain.Repositories
 {
     public class Repository<T,C> : IRepository<T,C> where T : class, new() where C : DbContext
     {
-        private readonly C _context;
-        private readonly DbSet<T> _dbSet;
+        protected readonly C _context;
+        protected readonly DbSet<T> _dbSet;
 
         public Repository(C context)
         {

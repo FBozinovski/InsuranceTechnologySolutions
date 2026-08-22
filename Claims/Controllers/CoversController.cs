@@ -1,9 +1,7 @@
-using Claims.Auditing;
-using Claims.Domain.Contexts;
 using Claims.Domain.Models;
+using Claims.Dto.Enumerations;
 using Claims.Service.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Claims.Controllers;
 
@@ -21,7 +19,7 @@ public class CoversController : ControllerBase
     }
 
     [HttpPost("compute")]
-    public async Task<ActionResult> ComputePremiumAsync(DateTime startDate, DateTime endDate, CoverType coverType)
+    public async Task<ActionResult> ComputePremiumAsync(DateTime startDate, DateTime endDate, Enumerations.CoverType coverType)
     {
         return Ok(_coverService.ComputePremium(startDate, endDate, coverType));
     }
