@@ -50,6 +50,9 @@ builder.Services.AddScoped<ICoverRepository, CoverRepository>();
 //Service DI
 builder.Services.AddScoped<IClaimService, ClaimService>();
 
+//AutoMapper
+builder.Services.AddAutoMapper(cfg => { }, AppDomain.CurrentDomain.GetAssemblies());
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
