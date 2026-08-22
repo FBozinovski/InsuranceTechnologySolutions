@@ -1,0 +1,93 @@
+﻿using Claims.Domain.Contexts;
+using Claims.Domain.Interfaces;
+using Claims.Domain.Models;
+using Claims.Domain.Repositories;
+using Claims.Service.Interfaces;
+
+namespace Claims.Service.Services
+{
+    public class CoverService : ICoverService
+    {
+
+        private readonly ICoverRepository _coverRepository;
+        private readonly ICoverAuditRepository _coverAuditRepository;
+
+        public CoverService(ICoverRepository coverRepository, ICoverAuditRepository coverAuditRepository)
+        {
+            _coverRepository = coverRepository;
+            _coverAuditRepository = coverAuditRepository;
+        }
+
+        public async Task<IEnumerable<Cover>> GetAllAsync()
+        {
+            return await _coverRepository.GetAllAsync();
+        }
+
+        public decimal ComputePremium(DateTime startDate, DateTime endDate, CoverType coverType)
+        {
+            var multiplier = 1.3m;
+            if (coverType == CoverType.Yacht)
+            {
+                multiplier = 1.1m;
+            }
+
+            if (coverType == CoverType.PassengerShip)
+            {
+                multiplier = 1.2m;
+            }
+
+            if (coverType == CoverType.Tanker)
+            {
+                multiplier = 1.5m;
+            }
+
+            var premiumPerDay = 1250 * multiplier;
+            var insuranceLength = (endDate - startDate).TotalDays;
+            var totalPremium = 0m;
+
+            for (var i = 0; i < insuranceLength; i++)
+            {
+                if (i < 30) totalPremium += premiumPerDay;
+                if (i < 180 && coverType == CoverType.Yacht) totalPremium += premiumPerDay - premiumPerDay * 0.05m;
+                else if (i < 180) totalPremium += premiumPerDay - premiumPerDay * 0.02m;
+                if (i < 365 && coverType != CoverType.Yacht) totalPremium += premiumPerDay - premiumPerDay * 0.03m;
+                else if (i < 365) totalPremium += premiumPerDay - premiumPerDay * 0.08m;
+            }
+
+            return totalPremium;
+        }
+
+        public async Task AuditCover(string id, string httpRequestType)
+        {
+            var coverAudit = new CoverAudit()
+            {
+                Created = DateTime.Now,
+                HttpRequestType = httpRequestType,
+                CoverId = id
+            };
+
+            await _coverAuditRepository.AddAsync(coverAudit);
+        }
+
+        public async Task<Cover> CreateAsync(Cover cover, string httpRequestType)
+        {
+            cover.Id = Guid.NewGuid().ToString();
+            cover.Premium = ComputePremium(cover.StartDate, cover.EndDate, cover.Type);
+            await _coverRepository.AddAsync(cover);
+            await AuditCover(cover.Id, httpRequestType);
+
+            return cover;
+        }
+
+        public async Task<Cover> GetByIdAsync(string id)
+        {
+            return await _coverRepository.GetByIdAsync(id);
+        }
+
+        public async Task DeleteByIdAsync(string id, string httpRequestType)
+        {
+            await _coverRepository.DeleteByIdAsync(id);
+            await AuditCover(id, httpRequestType);
+        }
+    }
+}

@@ -41,9 +41,13 @@ builder.Services.AddDbContext<ClaimsContext>(options =>
     options.UseMongoDB(database.Client, database.DatabaseNamespace.DatabaseName);
 });
 
+//Repo DI
 builder.Services.AddScoped(typeof(IRepository<,>), typeof(Repository<,>));
 builder.Services.AddScoped<IClaimRepository, ClaimRepository>();
 builder.Services.AddScoped<IClaimAuditRepository, ClaimAuditRepository>();
+builder.Services.AddScoped<ICoverRepository, CoverRepository>();
+
+//Service DI
 builder.Services.AddScoped<IClaimService, ClaimService>();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

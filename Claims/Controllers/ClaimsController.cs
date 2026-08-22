@@ -12,22 +12,18 @@ namespace Claims.Controllers
     public class ClaimsController : ControllerBase
     {
         private readonly ILogger<ClaimsController> _logger;
-        private readonly Auditer _auditer;
-        private readonly IClaimRepository _claimRepository;
         private readonly IClaimService _claimService;
 
-        public ClaimsController(ILogger<ClaimsController> logger, AuditContext auditContext, IClaimRepository claimRepository, IClaimService claimService)
+        public ClaimsController(ILogger<ClaimsController> logger, IClaimService claimService)
         {
             _logger = logger;
-            _claimRepository = claimRepository;
             _claimService = claimService;
-            _auditer = new Auditer(auditContext);
         }
 
         [HttpGet]
         public async Task<IEnumerable<Claim>> GetAsync()
         {
-            return await _claimRepository.GetAllAsync();
+            return await _claimService.GetAllAsync();
         }
 
         [HttpPost]
@@ -40,14 +36,13 @@ namespace Claims.Controllers
         [HttpDelete("{id}")]
         public async Task DeleteAsync(string id)
         {
-            _auditer.AuditClaim(id, Request.Method);
-            await _claimRepository.DeleteByIdAsync(id);
+            await _claimService.DeleteByIdAsync(id, Request.Method);
         }
 
         [HttpGet("{id}")]
         public async Task<Claim> GetAsync(string id)
         {
-            return await _claimRepository.GetByIdAsync(id);
+            return await _claimService.GetByIdAsync(id);
         }
     }
 }

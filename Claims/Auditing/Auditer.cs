@@ -12,19 +12,7 @@ namespace Claims.Auditing
             _auditContext = auditContext;
         }
 
-        public void AuditClaim(string id, string httpRequestType)
-        {
-            var claimAudit = new ClaimAudit()
-            {
-                Created = DateTime.Now,
-                HttpRequestType = httpRequestType,
-                ClaimId = id
-            };
-
-            _auditContext.Add(claimAudit);
-            _auditContext.SaveChanges();
-        }
-        
+      
         public void AuditCover(string id, string httpRequestType)
         {
             var coverAudit = new CoverAudit()

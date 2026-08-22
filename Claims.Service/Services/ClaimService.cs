@@ -38,5 +38,23 @@ namespace Claims.Service.Services
 
             return claim;
         }
+
+        //TODO: create a request class and don't use the domain model directly in the service layer. This is a bad practice and should be avoided.
+        public async Task<IEnumerable<Claim>> GetAllAsync()
+        {
+            return await _claimRepository.GetAllAsync();
+        }
+        
+        public async Task DeleteByIdAsync(string id, string httpRequestType)
+        {
+            await _claimRepository.DeleteByIdAsync(id);
+            await AuditClaim(id, httpRequestType);
+        }
+
+        //TODO: create a request class and don't use the domain model directly in the service layer. This is a bad practice and should be avoided.
+        public async Task<Claim> GetByIdAsync(string id)
+        {
+            return await _claimRepository.GetByIdAsync(id);
+        }
     }
 }
