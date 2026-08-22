@@ -3,6 +3,7 @@ using Claims.Dto.Requests;
 using Claims.Dto.Responses;
 using Claims.Service.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace Claims.Controllers;
 
@@ -75,6 +76,10 @@ public class CoversController : ControllerBase
         try
         {
             response = await _coverService.CreateAsync(request, Request.Method);
+        }
+        catch (ValidationException e)
+        {
+            return BadRequest(e.Message);
         }
         catch (Exception e)
         {

@@ -8,21 +8,26 @@ using Claims.Dto.Requests;
 using Claims.Dto.Responses;
 using Claims.Service.Interfaces;
 using Microsoft.Extensions.Logging;
+using System.ComponentModel.DataAnnotations;
 using System.Net;
 
 namespace Claims.Service.Services
 {
     public class ClaimService : IClaimService
     {
+        private const decimal MaxDamageCost = 100_000m;
+
         private readonly IClaimRepository _claimRepository;
         private readonly IClaimAuditRepository _claimAuditRepository;
+        private readonly ICoverRepository _coverRepository;
         private readonly IMapper _mapper;
 
         public ClaimService(IClaimRepository claimRepository, IClaimAuditRepository claimAuditRepository,
-            IMapper mapper, ILogger<ClaimService> logger)
+            ICoverRepository coverRepository, IMapper mapper, ILogger<ClaimService> logger)
         {
             _claimRepository = claimRepository;
             _claimAuditRepository = claimAuditRepository;
+            _coverRepository = coverRepository;
             _mapper = mapper;
         }
 
@@ -40,12 +45,33 @@ namespace Claims.Service.Services
 
         public async Task<ClaimResponse> CreateAsync(ClaimRequest request, string httpRequestType)
         {
+            await ValidateAsync(request);
+
             var claim = _mapper.Map<Claim>(request);
             claim.Id = Guid.NewGuid().ToString();
             await _claimRepository.AddAsync(claim);
             await AuditClaim(claim.Id, httpRequestType);
 
             return _mapper.Map<ClaimResponse>(claim);
+        }
+
+        private async Task ValidateAsync(ClaimRequest request)
+        {
+            if (request.DamageCost > MaxDamageCost)
+            {
+                throw new ValidationException($"DamageCost cannot exceed {MaxDamageCost:N0}.");
+            }
+
+            var cover = await _coverRepository.GetByIdAsync(request.CoverId);
+            if (cover is null)
+            {
+                throw new ValidationException($"Cover with id '{request.CoverId}' was not found.");
+            }
+
+            if (request.Created.Date < cover.StartDate.Date || request.Created.Date > cover.EndDate.Date)
+            {
+                throw new ValidationException("Created date must be within the period of the related Cover.");
+            }
         }
 
         public async Task<IEnumerable<ClaimResponse>> GetAllAsync()

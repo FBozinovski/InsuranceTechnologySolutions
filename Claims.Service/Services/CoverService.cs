@@ -6,6 +6,7 @@ using Claims.Dto.Enumerations;
 using Claims.Dto.Requests;
 using Claims.Dto.Responses;
 using Claims.Service.Interfaces;
+using System.ComponentModel.DataAnnotations;
 
 namespace Claims.Service.Services
 {
@@ -76,6 +77,8 @@ namespace Claims.Service.Services
 
         public async Task<CoverResponse> CreateAsync(CoverRequest request, string httpRequestType)
         {
+            Validate(request);
+
             var cover = _mapper.Map<Cover>(request);
             cover.Id = Guid.NewGuid().ToString();
             cover.Premium = ComputePremium(cover.StartDate, cover.EndDate, cover.Type);
@@ -83,6 +86,19 @@ namespace Claims.Service.Services
             await AuditCover(cover.Id, httpRequestType);
 
             return _mapper.Map<CoverResponse>(cover);
+        }
+
+        private static void Validate(CoverRequest request)
+        {
+            if (request.StartDate.Date < DateTime.Now.Date)
+            {
+                throw new ValidationException("StartDate cannot be in the past.");
+            }
+
+            if (request.StartDate.AddYears(1) < request.EndDate)
+            {
+                throw new ValidationException("Total insurance period cannot exceed 1 year.");
+            }
         }
 
         public async Task<CoverResponse> GetByIdAsync(string id)
