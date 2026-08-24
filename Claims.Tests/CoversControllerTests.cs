@@ -5,7 +5,6 @@ using Claims.Dto.Responses;
 using Claims.Service.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using System.ComponentModel.DataAnnotations;
 using Xunit;
@@ -18,7 +17,7 @@ namespace Claims.Tests
 
         private CoversController CreateController(string httpMethod = "GET")
         {
-            return new CoversController(NullLogger<CoversController>.Instance, _coverServiceMock.Object)
+            return new CoversController(_coverServiceMock.Object)
             {
                 ControllerContext = new ControllerContext
                 {
@@ -28,7 +27,7 @@ namespace Claims.Tests
         }
 
         [Fact]
-        public async Task ComputePremiumAsync_ReturnsOkWithPremium_WhenServiceSucceeds()
+        public void ComputePremiumAsync_ReturnsOkWithPremium_WhenServiceSucceeds()
         {
             var startDate = DateTime.Today;
             var endDate = startDate.AddDays(60);
@@ -37,14 +36,14 @@ namespace Claims.Tests
                 .Returns(1000m);
             var controller = CreateController();
 
-            var result = await controller.ComputePremiumAsync(startDate, endDate, Enumerations.CoverType.Yacht);
+            var result = controller.ComputePremiumAsync(startDate, endDate, Enumerations.CoverType.Yacht);
 
             var okResult = Assert.IsType<OkObjectResult>(result);
             Assert.Equal(1000m, okResult.Value);
         }
 
         [Fact]
-        public async Task ComputePremiumAsync_Returns500_WhenServiceThrows()
+        public void ComputePremiumAsync_PropagatesException_WhenServiceThrows()
         {
             var startDate = DateTime.Today;
             var endDate = startDate.AddDays(60);
@@ -53,10 +52,7 @@ namespace Claims.Tests
                 .Throws(new Exception("boom"));
             var controller = CreateController();
 
-            var result = await controller.ComputePremiumAsync(startDate, endDate, Enumerations.CoverType.Yacht);
-
-            var statusResult = Assert.IsType<StatusCodeResult>(result);
-            Assert.Equal(StatusCodes.Status500InternalServerError, statusResult.StatusCode);
+            Assert.Throws<Exception>(() => controller.ComputePremiumAsync(startDate, endDate, Enumerations.CoverType.Yacht));
         }
 
         [Fact]
@@ -73,15 +69,12 @@ namespace Claims.Tests
         }
 
         [Fact]
-        public async Task GetAsync_Returns500_WhenServiceThrows()
+        public async Task GetAsync_PropagatesException_WhenServiceThrows()
         {
             _coverServiceMock.Setup(s => s.GetAllAsync()).ThrowsAsync(new Exception("boom"));
             var controller = CreateController();
 
-            var result = await controller.GetAsync();
-
-            var statusResult = Assert.IsType<StatusCodeResult>(result);
-            Assert.Equal(StatusCodes.Status500InternalServerError, statusResult.StatusCode);
+            await Assert.ThrowsAsync<Exception>(() => controller.GetAsync());
         }
 
         [Fact]
@@ -102,7 +95,7 @@ namespace Claims.Tests
         }
 
         [Fact]
-        public async Task CreateAsync_ReturnsBadRequest_WhenValidationFails()
+        public async Task CreateAsync_PropagatesValidationException_WhenValidationFails()
         {
             var request = new CoverRequest { StartDate = DateTime.Today.AddDays(-1) };
             _coverServiceMock
@@ -110,14 +103,11 @@ namespace Claims.Tests
                 .ThrowsAsync(new ValidationException("StartDate cannot be in the past."));
             var controller = CreateController("POST");
 
-            var result = await controller.CreateAsync(request);
-
-            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-            Assert.Equal("StartDate cannot be in the past.", badRequest.Value);
+            await Assert.ThrowsAsync<ValidationException>(() => controller.CreateAsync(request));
         }
 
         [Fact]
-        public async Task CreateAsync_Returns500_WhenServiceThrowsUnexpectedException()
+        public async Task CreateAsync_PropagatesException_WhenServiceThrowsUnexpectedException()
         {
             var request = new CoverRequest();
             _coverServiceMock
@@ -125,10 +115,7 @@ namespace Claims.Tests
                 .ThrowsAsync(new InvalidOperationException("boom"));
             var controller = CreateController("POST");
 
-            var result = await controller.CreateAsync(request);
-
-            var statusResult = Assert.IsType<StatusCodeResult>(result);
-            Assert.Equal(StatusCodes.Status500InternalServerError, statusResult.StatusCode);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => controller.CreateAsync(request));
         }
 
         [Fact]
@@ -144,15 +131,12 @@ namespace Claims.Tests
         }
 
         [Fact]
-        public async Task DeleteAsync_Returns500_WhenServiceThrows()
+        public async Task DeleteAsync_PropagatesException_WhenServiceThrows()
         {
             _coverServiceMock.Setup(s => s.DeleteByIdAsync("1", It.IsAny<string>())).ThrowsAsync(new Exception("boom"));
             var controller = CreateController("DELETE");
 
-            var result = await controller.DeleteAsync("1");
-
-            var statusResult = Assert.IsType<StatusCodeResult>(result);
-            Assert.Equal(StatusCodes.Status500InternalServerError, statusResult.StatusCode);
+            await Assert.ThrowsAsync<Exception>(() => controller.DeleteAsync("1"));
         }
 
         [Fact]
@@ -180,15 +164,12 @@ namespace Claims.Tests
         }
 
         [Fact]
-        public async Task GetByIdAsync_Returns500_WhenServiceThrows()
+        public async Task GetByIdAsync_PropagatesException_WhenServiceThrows()
         {
             _coverServiceMock.Setup(s => s.GetByIdAsync("1")).ThrowsAsync(new Exception("boom"));
             var controller = CreateController();
 
-            var result = await controller.GetAsync("1");
-
-            var statusResult = Assert.IsType<StatusCodeResult>(result);
-            Assert.Equal(StatusCodes.Status500InternalServerError, statusResult.StatusCode);
+            await Assert.ThrowsAsync<Exception>(() => controller.GetAsync("1"));
         }
     }
 }

@@ -1,6 +1,7 @@
 using Claims.Domain.Contexts;
 using Claims.Domain.Interfaces;
 using Claims.Domain.Repositories;
+using Claims.ExceptionHandling;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 using System.Text.Json.Serialization;
@@ -56,6 +57,9 @@ builder.Services.AddScoped<ICoverService, CoverService>();
 //AutoMapper
 builder.Services.AddAutoMapper(cfg => { }, typeof(AssemblyMarker).Assembly);
 
+builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -63,6 +67,8 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+app.UseExceptionHandler();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

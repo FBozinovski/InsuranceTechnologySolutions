@@ -5,7 +5,6 @@ using Claims.Service.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using System.ComponentModel.DataAnnotations;
 using Xunit;
@@ -18,7 +17,7 @@ namespace Claims.Tests
 
         private ClaimsController CreateController(string httpMethod = "GET")
         {
-            return new ClaimsController(_claimServiceMock.Object, NullLogger<ClaimsController>.Instance)
+            return new ClaimsController(_claimServiceMock.Object)
             {
                 ControllerContext = new ControllerContext
                 {
@@ -57,15 +56,14 @@ namespace Claims.Tests
         }
 
         [Fact]
-        public async Task GetAsync_Returns500_WhenServiceThrows()
+        public async Task GetAsync_PropagatesException_WhenServiceThrows()
         {
             _claimServiceMock.Setup(s => s.GetAllAsync()).ThrowsAsync(new Exception("boom"));
             var controller = CreateController();
 
-            var result = await controller.GetAsync();
-
-            var statusResult = Assert.IsType<StatusCodeResult>(result);
-            Assert.Equal(StatusCodes.Status500InternalServerError, statusResult.StatusCode);
+            // The controller no longer catches exceptions itself - that's the global
+            // exception handler's job (see ExceptionHandling tests), so it should propagate.
+            await Assert.ThrowsAsync<Exception>(() => controller.GetAsync());
         }
 
         [Fact]
@@ -86,7 +84,7 @@ namespace Claims.Tests
         }
 
         [Fact]
-        public async Task CreateAsync_ReturnsBadRequest_WhenValidationFails()
+        public async Task CreateAsync_PropagatesValidationException_WhenValidationFails()
         {
             var request = new ClaimRequest { DamageCost = 1_000_000m };
             _claimServiceMock
@@ -94,14 +92,11 @@ namespace Claims.Tests
                 .ThrowsAsync(new ValidationException("DamageCost cannot exceed 100,000."));
             var controller = CreateController("POST");
 
-            var result = await controller.CreateAsync(request);
-
-            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-            Assert.Equal("DamageCost cannot exceed 100,000.", badRequest.Value);
+            await Assert.ThrowsAsync<ValidationException>(() => controller.CreateAsync(request));
         }
 
         [Fact]
-        public async Task CreateAsync_Returns500_WhenServiceThrowsUnexpectedException()
+        public async Task CreateAsync_PropagatesException_WhenServiceThrowsUnexpectedException()
         {
             var request = new ClaimRequest();
             _claimServiceMock
@@ -109,10 +104,7 @@ namespace Claims.Tests
                 .ThrowsAsync(new InvalidOperationException("boom"));
             var controller = CreateController("POST");
 
-            var result = await controller.CreateAsync(request);
-
-            var statusResult = Assert.IsType<StatusCodeResult>(result);
-            Assert.Equal(StatusCodes.Status500InternalServerError, statusResult.StatusCode);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => controller.CreateAsync(request));
         }
 
         [Fact]
@@ -128,15 +120,12 @@ namespace Claims.Tests
         }
 
         [Fact]
-        public async Task DeleteAsync_Returns500_WhenServiceThrows()
+        public async Task DeleteAsync_PropagatesException_WhenServiceThrows()
         {
             _claimServiceMock.Setup(s => s.DeleteByIdAsync("1", It.IsAny<string>())).ThrowsAsync(new Exception("boom"));
             var controller = CreateController("DELETE");
 
-            var result = await controller.DeleteAsync("1");
-
-            var statusResult = Assert.IsType<StatusCodeResult>(result);
-            Assert.Equal(StatusCodes.Status500InternalServerError, statusResult.StatusCode);
+            await Assert.ThrowsAsync<Exception>(() => controller.DeleteAsync("1"));
         }
 
         [Fact]
@@ -164,15 +153,12 @@ namespace Claims.Tests
         }
 
         [Fact]
-        public async Task GetByIdAsync_Returns500_WhenServiceThrows()
+        public async Task GetByIdAsync_PropagatesException_WhenServiceThrows()
         {
             _claimServiceMock.Setup(s => s.GetByIdAsync("1")).ThrowsAsync(new Exception("boom"));
             var controller = CreateController();
 
-            var result = await controller.GetAsync("1");
-
-            var statusResult = Assert.IsType<StatusCodeResult>(result);
-            Assert.Equal(StatusCodes.Status500InternalServerError, statusResult.StatusCode);
+            await Assert.ThrowsAsync<Exception>(() => controller.GetAsync("1"));
         }
     }
 }
