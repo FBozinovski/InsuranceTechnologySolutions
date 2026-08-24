@@ -29,38 +29,65 @@ namespace Claims.Service.Services
             return await _coverRepository.GetAllCoverResponses();
         }
 
+        private const decimal BaseDailyRate = 1250m;
+        private const int FirstTierDays = 30;
+        private const int SecondTierDays = 150;
+
         public decimal ComputePremium(DateTime startDate, DateTime endDate, Enumerations.CoverType coverType)
         {
-            var multiplier = 1.3m;
+            var dailyRate = BaseDailyRate * GetTypeMultiplier(coverType);
+            var secondTierDiscount = GetSecondTierDiscount(coverType);
+            var thirdTierDiscount = GetThirdTierDiscount(coverType);
+
+            var totalDays = Math.Max((endDate.Date - startDate.Date).Days, 0);
+            var firstTierDays = Math.Min(totalDays, FirstTierDays);
+            var secondTierDays = Math.Min(Math.Max(totalDays - FirstTierDays, 0), SecondTierDays);
+            var thirdTierDays = Math.Max(totalDays - FirstTierDays - SecondTierDays, 0);
+
+            return firstTierDays * dailyRate
+                 + secondTierDays * dailyRate * (1 - secondTierDiscount)
+                 + thirdTierDays * dailyRate * (1 - thirdTierDiscount);
+        }
+
+        private static decimal GetTypeMultiplier(Enumerations.CoverType coverType)
+        {
             if (coverType == Enumerations.CoverType.Yacht)
             {
-                multiplier = 1.1m;
+                return 1.10m; 
             }
 
             if (coverType == Enumerations.CoverType.PassengerShip)
             {
-                multiplier = 1.2m;
+                return 1.20m;
             }
 
             if (coverType == Enumerations.CoverType.Tanker)
             {
-                multiplier = 1.5m;
+                return 1.50m;
             }
 
-            var premiumPerDay = 1250 * multiplier;
-            var insuranceLength = (endDate - startDate).TotalDays;
-            var totalPremium = 0m;
+            return 1.30m;
+        }
 
-            for (var i = 0; i < insuranceLength; i++)
+        private static decimal GetSecondTierDiscount(Enumerations.CoverType coverType)
+        {
+            if (coverType == Enumerations.CoverType.Yacht)
             {
-                if (i < 30) totalPremium += premiumPerDay;
-                if (i < 180 && coverType == Enumerations.CoverType.Yacht) totalPremium += premiumPerDay - premiumPerDay * 0.05m;
-                else if (i < 180) totalPremium += premiumPerDay - premiumPerDay * 0.02m;
-                if (i < 365 && coverType != Enumerations.CoverType.Yacht) totalPremium += premiumPerDay - premiumPerDay * 0.03m;
-                else if (i < 365) totalPremium += premiumPerDay - premiumPerDay * 0.08m;
+                return 0.05m; // 5% discount
             }
 
-            return totalPremium;
+            return 0.02m; // 2% discount
+        }
+
+
+        private static decimal GetThirdTierDiscount(Enumerations.CoverType coverType)
+        {
+            if (coverType == Enumerations.CoverType.Yacht)
+            {
+                return 0.08m; // second tier's 5% plus an additional 3%
+            }
+
+            return 0.03m; // second tier's 2% plus an additional 1%
         }
 
         public async Task AuditCover(string id, string httpRequestType)
