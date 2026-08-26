@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 using System.Text.Json.Serialization;
 using Claims.MapperProfile;
+using Claims.Service.BackgroundProcessing;
 using Claims.Service.Interfaces;
 using Claims.Service.Services;
 using Testcontainers.MongoDb;
@@ -53,12 +54,17 @@ builder.Services.AddScoped<ICoverAuditRepository, CoverAuditRepository>();
 //Service DI
 builder.Services.AddScoped<IClaimService, ClaimService>();
 builder.Services.AddScoped<ICoverService, CoverService>();
+builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
+
+//Background worker service
+builder.Services.AddHostedService<BackgroundWorkerService>();
 
 //AutoMapper
 builder.Services.AddAutoMapper(cfg => { }, typeof(AssemblyMarker).Assembly);
 
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

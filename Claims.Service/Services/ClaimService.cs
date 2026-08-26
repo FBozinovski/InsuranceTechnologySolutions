@@ -1,15 +1,15 @@
 ﻿
 using AutoMapper;
-using Azure;
 using Claims.Domain.Contexts;
 using Claims.Domain.Interfaces;
 using Claims.Domain.Models;
 using Claims.Dto.Requests;
 using Claims.Dto.Responses;
+using Claims.Service.BackgroundProcessing;
 using Claims.Service.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel.DataAnnotations;
-using System.Net;
 
 namespace Claims.Service.Services
 {
@@ -18,29 +18,33 @@ namespace Claims.Service.Services
         private const decimal MaxDamageCost = 100_000m;
 
         private readonly IClaimRepository _claimRepository;
-        private readonly IClaimAuditRepository _claimAuditRepository;
         private readonly ICoverRepository _coverRepository;
+        private readonly IBackgroundTaskQueue _taskQueue;
         private readonly IMapper _mapper;
 
-        public ClaimService(IClaimRepository claimRepository, IClaimAuditRepository claimAuditRepository,
-            ICoverRepository coverRepository, IMapper mapper, ILogger<ClaimService> logger)
+        public ClaimService(IClaimRepository claimRepository, ICoverRepository coverRepository,
+            IBackgroundTaskQueue taskQueue, IMapper mapper, ILogger<ClaimService> logger)
         {
             _claimRepository = claimRepository;
-            _claimAuditRepository = claimAuditRepository;
             _coverRepository = coverRepository;
+            _taskQueue = taskQueue;
             _mapper = mapper;
         }
 
-        public async Task AuditClaim(string id, string httpRequestType)
+        private async Task AuditClaim(string id, string httpRequestType)
         {
-            var claimAudit = new ClaimAudit()
+            await _taskQueue.WriteToQueueAsync(async (serviceProvider, cancellationToken) =>
             {
-                Created = DateTime.Now,
-                HttpRequestType = httpRequestType,
-                ClaimId = id
-            };
+                var claimAuditRepository = serviceProvider.GetRequiredService<IClaimAuditRepository>();
+                var claimAudit = new ClaimAudit()
+                {
+                    Created = DateTime.Now,
+                    HttpRequestType = httpRequestType,
+                    ClaimId = id
+                };
 
-            await _claimAuditRepository.AddAsync(claimAudit);
+                await claimAuditRepository.AddAsync(claimAudit);
+            });
         }
 
         public async Task<ClaimResponse> CreateAsync(ClaimRequest request, string httpRequestType)

@@ -5,7 +5,9 @@ using Claims.Domain.Models;
 using Claims.Dto.Enumerations;
 using Claims.Dto.Requests;
 using Claims.Dto.Responses;
+using Claims.Service.BackgroundProcessing;
 using Claims.Service.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel.DataAnnotations;
 
 namespace Claims.Service.Services
@@ -14,13 +16,13 @@ namespace Claims.Service.Services
     {
 
         private readonly ICoverRepository _coverRepository;
-        private readonly ICoverAuditRepository _coverAuditRepository;
+        private readonly IBackgroundTaskQueue _taskQueue;
         private readonly IMapper _mapper;
 
-        public CoverService(ICoverRepository coverRepository, ICoverAuditRepository coverAuditRepository, IMapper mapper)
+        public CoverService(ICoverRepository coverRepository, IBackgroundTaskQueue taskQueue, IMapper mapper)
         {
             _coverRepository = coverRepository;
-            _coverAuditRepository = coverAuditRepository;
+            _taskQueue = taskQueue;
             _mapper = mapper;
         }
 
@@ -90,16 +92,20 @@ namespace Claims.Service.Services
             return 0.03m; // second tier's 2% plus an additional 1%
         }
 
-        public async Task AuditCover(string id, string httpRequestType)
+        private async Task AuditCover(string id, string httpRequestType)
         {
-            var coverAudit = new CoverAudit()
+            await _taskQueue.WriteToQueueAsync(async (serviceProvider, cancellationToken) =>
             {
-                Created = DateTime.Now,
-                HttpRequestType = httpRequestType,
-                CoverId = id
-            };
+                var coverAuditRepository = serviceProvider.GetRequiredService<ICoverAuditRepository>();
+                var coverAudit = new CoverAudit()
+                {
+                    Created = DateTime.Now,
+                    HttpRequestType = httpRequestType,
+                    CoverId = id
+                };
 
-            await _coverAuditRepository.AddAsync(coverAudit);
+                await coverAuditRepository.AddAsync(coverAudit);
+            });
         }
 
         public async Task<CoverResponse> CreateAsync(CoverRequest request, string httpRequestType)
