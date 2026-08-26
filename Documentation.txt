@@ -1,0 +1,121 @@
+CLAIMS SOLUTION - TECHNICAL DOCUMENTATION
+
+
+1. ARCHITECTURE
+
+The solution is split into layered projects, each with a single, clear responsibility:
+
+- Claims (host)
+  ASP.NET Core Web API. Contains only Controllers, DI composition (Program.cs),
+  and cross-cutting HTTP concerns (global exception handling middleware).
+  Controllers contain no business logic and no data access - they translate
+  an HTTP request into a service call and a service result into an response.
+
+- Claims.Domain
+  Domain models (Claim, Cover, ClaimAudit, CoverAudit), the two EF Core DbContexts
+  (ClaimsContext -> MongoDB for Claims/Covers, AuditContext -> SQL Server for the
+  audit trail), a generic Repository<T,C> plus typed repositories per entity, and
+  EF Core migrations for AuditContext.
+
+- Claims.Dto
+  Request/response DTOs and enumerations exposed at the API boundary. Has no
+  dependency on Claims.Domain, so the wire contract and the persistence model
+  are free to evolve independently.
+
+- Claims.Service
+  Business logic: ClaimService, CoverService - validation, premium
+  calculation, orchestrating repository calls, mapping between DTOs and domain
+  models via AutoMapper. Also owns the background audit-processing infrastructure
+  (see section 3).
+
+- Claims.MapperProfile
+  AutoMapper Profile classes mapping ClaimRequest/CoverRequest -> domain models
+  and domain models -> ClaimResponse/CoverResponse.
+
+- Claims.Tests
+  xUnit + Moq unit tests for the controllers (service layer mocked out), plus one
+  WebApplicationFactory integration test.
+
+Request flow:
+  Controller -> IClaimService/ICoverService (validates, maps request DTO to model,
+  calls repository, maps model to response DTO) -> IClaimRepository/ICoverRepository
+  (EF Core against ClaimsContext) -> response DTO returned to the client.
+
+Cross-cutting concerns:
+  - Global exception handling: ValidationExceptionHandler (-> 400 with the
+    validation message) and GlobalExceptionHandler (-> 500 with a generic message;
+    the real exception is logged, never exposed to the client). Both implement
+    IExceptionHandler and are wired via app.UseExceptionHandler().
+  - Background audit processing: IBackgroundTaskQueue + BackgroundWorkerService
+    (see section 3).
+
+
+2. USE OF SOLID PRINCIPLES
+
+Single Responsibility
+  Controllers only translate HTTP <-> service calls. Services own business rules
+  (e.g. ClaimService.ValidateAsync, CoverService.ComputePremium). Repositories
+  own persistence. Mapping is isolated to Claims.MapperProfile. Each class has
+  exactly one reason to change.
+
+Open/Closed
+  Repository<T,C> is a generic base implementing common CRUD once. New entity-
+  specific behaviour (e.g. ClaimRepository.GetClaimResponseById,
+  CoverRepository.GetCoverResponseById) is added by extending it in a derived
+  class, never by modifying the base.
+
+Liskov Substitution
+  Every concrete repository (ClaimRepository, CoverRepository,
+  ClaimAuditRepository, CoverAuditRepository) can be used anywhere its interface
+  is expected without surprising behaviour - they only add capability on top of
+  Repository<T,C>, never override or weaken its contract.
+
+Interface Segregation
+  IClaimService/ICoverService only expose what their controllers actually call.
+  IClaimRepository/ICoverRepository extend the generic IRepository<T,C> with
+  only the extra members each entity needs (e.g. GetClaimResponseById exists
+  only on the claim side) rather than one bloated repository interface shared
+  by everything.
+
+Dependency Inversion
+  Controllers and services depend on abstractions only - IClaimService,
+  IClaimRepository, IMapper, IBackgroundTaskQueue - never on concrete classes.
+  All concrete wiring happens once, centrally, in Program.cs. This is also what
+  makes the controller unit tests possible: IClaimService/ICoverService are
+  mocked directly, with no real database or queue involved.
+
+
+3. HOSTED SERVICE + QUEUE FOR AUDITING
+
+An in-memory, in-process queue decouples the audit write from the
+request, and a single background worker performs the actual write later.
+
+- IBackgroundTaskQueue / BackgroundTaskQueue
+  Wraps a System.Threading.Channels.Channel<T> (unbounded, no size limit), storing deferred
+  work items of type Func<IServiceProvider, CancellationToken, Task>.
+    - WriteToQueueAsync: enqueues a work item. Effectively instantaneous - never
+      blocks the caller, since the channel is unbounded.
+    - ReadFromQueueAsync: asynchronously waits for and returns the next item,
+      without occupying a thread while idle.
+  Registered as a Singleton - one queue instance is shared by every HTTP request
+  (producers) and the one background worker (consumer).
+
+- BackgroundWorkerService : BackgroundService
+  Registered via builder.Services.AddHostedService<BackgroundWorkerService>().
+  This participates in the ASP.NET Core Generic Host lifecycle: it is started
+  once when the app starts and runs for the app's entire lifetime, independent
+  of any single HTTP request. Its ExecuteAsync loop continuously calls
+  ReadFromQueueAsync and, for each item, creates a *new* DI scope (via
+  IServiceScopeFactory) before invoking it. A new scope is required because the
+  scope the item was enqueued from (the original HTTP request's scope) is
+  already disposed by the time the worker gets to it - reusing it would throw
+  ObjectDisposedException on the repository/DbContext. Each item's failure is
+  caught and logged individually, so one bad audit write never kills the worker
+  loop or silently drops subsequent items.
+
+- Producer side (ClaimService.AuditClaim / CoverService.AuditCover)
+  These no longer write to AuditContext directly. They build a closure that
+  captures the audit data (id, http verb, timestamp) and enqueue it via
+  WriteToQueueAsync. CreateAsync/DeleteByIdAsync still "await AuditClaim(...)",
+  but that await now only completes an in-memory enqueue, not a SQL round trip -
+  the HTTP response returns as soon as the primary Claim/Cover write finishes.

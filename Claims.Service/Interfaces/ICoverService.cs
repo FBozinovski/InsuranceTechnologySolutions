@@ -8,7 +8,6 @@ namespace Claims.Service.Interfaces
     {
         Task<IEnumerable<CoverResponse>> GetAllAsync();
         decimal ComputePremium(DateTime startDate, DateTime endDate, Enumerations.CoverType coverType);
-        Task AuditCover(string id, string httpRequestType);
         Task<CoverResponse> CreateAsync(CoverRequest cover, string httpRequestType);
         Task<CoverResponse> GetByIdAsync(string id);
         Task DeleteByIdAsync(string id, string httpRequestType);
